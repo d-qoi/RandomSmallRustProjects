@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use tracing::info;
+use tracing::{info, debug, log::warn};
 use tracing_subscriber::{Layer, prelude::__tracing_subscriber_SubscriberExt};
 use warp::{Filter, hyper::StatusCode, Rejection, reject, Reply};
 use std::{io, net::SocketAddr, env, convert::Infallible};
@@ -23,7 +23,7 @@ struct Response {
 
 #[tokio::main]
 async fn main() {
-    let stdout_log = tracing_subscriber::fmt::layer().pretty().with_writer(io::stdout);
+    let stdout_log = tracing_subscriber::fmt::layer().pretty().with_writer(io::stdout).with_filter(tracing_subscriber::filter::LevelFilter::DEBUG);
     let stderr_log = tracing_subscriber::fmt::layer().pretty().with_writer(io::stderr).with_filter(tracing_subscriber::filter::LevelFilter::ERROR);
 
     let logger = tracing_subscriber::Registry::default()
@@ -51,29 +51,32 @@ fn check_secret(secret: String) -> impl Filter<Extract = (), Error = Rejection> 
     .and_then(check_secret_fn).untuple_one()
 }
 
-#[tracing::instrument]
 async fn check_secret_fn(param: Params, secret: String) -> Result<(), Rejection> {
+    debug!("Params: {:?}, Secret: {}", param, secret);
     if let Some(param_secret) = param.key {
         if secret.eq(&param_secret) {
+            debug!("Matched");
             Ok(())
         } else {
+            debug!("Not Matched");
             Err(reject::custom(SecretError))
         }
     } else {
+        warn!("Key Not Included");
         Err(reject::custom(SecretError))
     }
 }
 
-#[tracing::instrument]
 async fn handler(addr: Option<SocketAddr>) -> Result<impl warp::Reply, Infallible> {
+    info!("Handler Hit");
     let reply = match addr {
         None => Response{ip:None, err:Some(String::from("Unable to return ip address"))},
         Some(address) => Response{ip:Some(address.ip().to_string()), err:None},
     };
+    info!("Returning {:?}", reply);
     Ok(warp::reply::json(&reply))
 }
 
-#[tracing::instrument]
 async fn handle_incorrect_secret(reject: Rejection) -> Result<impl Reply, Rejection> {
     if reject.find::<SecretError>().is_some() {
         Ok(StatusCode::NOT_ACCEPTABLE)

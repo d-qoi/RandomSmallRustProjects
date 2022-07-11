@@ -44,7 +44,13 @@ async fn main() {
     warp::serve(route).run(([127,0,0,1], 3000)).await;
 }
 
-
+// The way the filters work.
+// the filters before, what they extract is handed off to the next filter, till a map, or and_then
+// it keeps adding parameters till a function is actually called, in which case it is flattened, and that return value
+// becomes the new extracted value.
+// This extracts () instead of ((),) because of the untuple_one.
+// If I were to return an int from check_secret_fn, the return value would be (int,) or int if untupled.
+// Rejection is a map of errors, as best as I can tell, if one is passed to an "and", it will be haulted.
 fn check_secret(secret: String) -> impl Filter<Extract = (), Error = Rejection> + Clone {
     warp::query::<Params>()
     .and(warp::any().map(move || secret.clone()))

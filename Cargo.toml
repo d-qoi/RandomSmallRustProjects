@@ -1,0 +1,5 @@
+[workspace]
+members = [
+	"tracing_stdout_stderr",
+	"warp_ip_response"
+]

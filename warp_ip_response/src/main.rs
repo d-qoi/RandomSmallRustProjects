@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use tracing::{info, debug, log::warn};
 use tracing_subscriber::{Layer, prelude::__tracing_subscriber_SubscriberExt};
-use warp::{Filter, hyper::StatusCode, Rejection, reject, Reply};
+use warp::{Filter, hyper::{StatusCode, HeaderMap}, Rejection, reject, Reply};
 use std::{io, net::SocketAddr, env, convert::Infallible};
 
 
@@ -39,16 +39,21 @@ async fn main() {
     debug!("Environment Variables Set: secret => {},  port => {},  local => {}", secret, port, local);
 
     let route = 
-        warp::get()
+        warp::get().and(warp::path::end())
         .and(check_secret(secret))
         .and(warp::addr::remote())
         .and_then(handler)
         .recover(handle_incorrect_secret);
 
+    let all_headers =
+        warp::path!("get"/"headers")
+        .and(warp::header::headers_cloned())
+        .map(|headers: HeaderMap| format!("{{ \"headers\": {:?} }}", headers));
+
     if local {
-        warp::serve(route).run(([127,0,0,1], port)).await;
+        warp::serve(route.or(all_headers)).run(([127,0,0,1], port)).await;
     } else {
-        warp::serve(route).run(([0,0,0,0], port)).await;
+        warp::serve(route.or(all_headers)).run(([0,0,0,0], port)).await;
     }
 }
 

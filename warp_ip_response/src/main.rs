@@ -39,7 +39,7 @@ async fn main() {
 
     let route = 
         warp::get().and(warp::path::end())
-        .and(check_secret(secret))
+        .and(check_secret(secret.clone()))
         .and(warp::addr::remote())
         .and(warp::header::optional::<String>("x-forwarded-for"))
         .and_then(handler)
@@ -47,8 +47,10 @@ async fn main() {
 
     let all_headers =
         warp::path!("get"/"headers")
+        .and(check_secret(secret))
         .and(warp::header::headers_cloned())
-        .map(|headers: HeaderMap| format!("{{ \"headers\": {:?} }}", headers));
+        .map(|headers: HeaderMap| format!("{{ \"headers\": {:?} }}", headers))
+        .recover(handle_incorrect_secret);
 
     if local {
         warp::serve(route.or(all_headers)).run(([127,0,0,1], port)).await;

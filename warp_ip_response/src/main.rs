@@ -17,7 +17,6 @@ struct Params {
 #[derive(Deserialize, Serialize, Debug)]
 struct Response {
     ip: Option<String>,
-    err: Option<String>
 }
 
 
@@ -42,6 +41,7 @@ async fn main() {
         warp::get().and(warp::path::end())
         .and(check_secret(secret))
         .and(warp::addr::remote())
+        .and(warp::header::optional::<String>("x-forwarded-for"))
         .and_then(handler)
         .recover(handle_incorrect_secret);
 
@@ -86,11 +86,11 @@ async fn check_secret_fn(param: Params, secret: String) -> Result<(), Rejection>
     }
 }
 
-async fn handler(addr: Option<SocketAddr>) -> Result<impl warp::Reply, Infallible> {
+async fn handler(addr: Option<SocketAddr>, forwarded_addr: Option<String>) -> Result<impl warp::Reply, Infallible> {
     info!("Handler Hit");
-    let reply = match addr {
-        None => Response{ip:None, err:Some(String::from("Unable to return ip address"))},
-        Some(address) => Response{ip:Some(address.ip().to_string()), err:None},
+    debug!("addr: {:?}, forwarded: {:?}", addr, forwarded_addr);
+    let reply = Response {
+        ip: forwarded_addr.or(addr.map_or(None, |addr|Some(addr.to_string())))
     };
     info!("Returning {:?}", reply);
     Ok(warp::reply::json(&reply))

@@ -32,8 +32,12 @@ async fn main() {
 
     tracing::subscriber::set_global_default(logger).unwrap();
 
-    let secret = env::var("IP_RESPONSE_SECRET").unwrap_or("1234".to_owned());
-    info!("Secret is {}", secret);
+    let secret = env::var("SECRET").unwrap_or(String::from("SECRET"));
+    let port = env::var("PORT").unwrap_or(String::from("8000")).parse::<u16>().unwrap_or(8000);
+    let local = env::var("LOCAL").is_ok();
+    warn!("Secret is {}", secret);
+    debug!("Environment Variables Set: secret => {},  port => {},  local => {}", secret, port, local);
+
     let route = 
         warp::get()
         .and(check_secret(secret))
@@ -41,7 +45,11 @@ async fn main() {
         .and_then(handler)
         .recover(handle_incorrect_secret);
 
-    warp::serve(route).run(([127,0,0,1], 3000)).await;
+    if local {
+        warp::serve(route).run(([127,0,0,1], port)).await;
+    } else {
+        warp::serve(route).run(([0,0,0,0], port)).await;
+    }
 }
 
 // The way the filters work.

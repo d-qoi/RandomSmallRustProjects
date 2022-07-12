@@ -18,6 +18,6 @@ If called with `/get/headers?key=secret` it will return all of the headers.
 LOCAL=1 cargo run --bin warp_ip_response
 
 * env variables:
-** SECRET=SECRET
-** PORT=8000
-** LOCAL=
+    * SECRET=SECRET
+    * PORT=8000
+    * LOCAL=

@@ -1,5 +1,7 @@
 [workspace]
 members = [
 	"tracing_stdout_stderr",
-	"warp_ip_response"
+	"warp_ip_response",
+	"genserver",
+    "mongo_testing"
 ]

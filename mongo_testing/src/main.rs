@@ -1,11 +1,17 @@
-use futures::{StreamExt, TryStreamExt};
+use futures::{Stream, StreamExt, TryStreamExt};
 use mongodb::{
     bson::{doc, Bson},
     options::{ClientOptions, UpdateOptions},
     Client, Cursor,
 };
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::error::Error;
+
+#[derive(Debug, Deserialize, Serialize)]
+struct OrderNumberOnly {
+    orderNumber: String,
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -13,6 +19,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let client = Client::with_options(client_opts)?;
     let db = client.database("test");
     let collection = db.collection::<Value>("test");
+    let collection2 = db.collection::<OrderNumberOnly>("test");
+    // Ticket values comes from wix events api documentation example.
     let ticket_response = json!(
             {
        "total":2,
@@ -94,6 +102,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
         println!("{:?}", resp);
     }
     let mut cursor: Cursor<Value> = collection.find(doc! {"ticketNumber": "asfd"}, None).await?;
+    while let Some(doc) = cursor.next().await {
+        println!("{:?}", doc?);
+    }
+    let mut cursor = collection2
+        .find(doc! {"ticketNumber":"FNVL-O7MZ-0Q021"}, None)
+        .await?;
     while let Some(doc) = cursor.next().await {
         println!("{:?}", doc?);
     }

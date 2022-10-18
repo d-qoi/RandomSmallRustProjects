@@ -1,7 +1,7 @@
 use std::{error::Error, io::Read};
 
-use bytes::{Buf, Bytes};
-use futures::{StreamExt, TryStreamExt};
+use bytes::Buf;
+use futures::TryStreamExt;
 use tracing::{error, info};
 use warp::{
     hyper::{HeaderMap, Uri},
@@ -46,8 +46,16 @@ async fn handler(form: FormData, headers: HeaderMap) -> Result<impl Reply, Rejec
         if let Some(Ok(data)) = part.data().await {
             let mut dest = vec![];
             let mut reader = data.reader();
-            let res = std::io::copy(&mut reader, &mut dest).unwrap();
+            let res = reader.read_to_end(&mut dest).map_err(|e| {
+                error!("Error in reading data: {}", e);
+                warp::reject::reject()
+            })?;
+            //let res = std::io::copy(&mut reader, &mut dest).unwrap();
             info!("Size: {}", res);
+            match String::from_utf8(dest) {
+                Ok(val) => info!("Data: {}", val),
+                Err(e) => error!("Error converting to string: {}", e),
+            }
         } else {
             error!("Error while getting data.");
         }
